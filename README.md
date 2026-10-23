@@ -54,7 +54,7 @@ export UVM_HOME="$HOME/tools/uvm-2020.3.2/src"
 test -f "$UVM_HOME/uvm_pkg.sv" && test -f "$UVM_HOME/uvm_macros.svh" && echo "UVM_HOME OK"
 ```
 
-Tại thư mục gốc repository:
+Tại thư mục gốc dự án:
 
 ```bash
 make clean
@@ -65,16 +65,6 @@ make coverage
 
 `make sim` phụ thuộc vào `build`, nên tự build lại trước khi chạy. Kết quả coverage được ghi vào `build/coverage.dat`; `make coverage` in summary và annotate source vào `build/coverage_annotated/`.
 
-Để chạy binary với seed và coverage file riêng:
-
-```bash
-seed=12345
-./build/Vtb_top +UVM_TESTNAME=fifo_test +UVM_VERBOSITY=UVM_MEDIUM \
-  +verilator+seed+$seed +verilator+coverage+file+build/coverage_${seed}.dat
-verilator_coverage --report summary build/coverage_${seed}.dat
-```
-
-Log `sim.log` không có seed được truyền vào, vì vậy seed của kết quả hiện tại chưa được ghi nhận. Ở lần chạy tiếp theo, lưu seed và log cùng nhau để có thể tái hiện kết quả. Verilator ghi rõ tùy chọn seed runtime là `+verilator+seed+<value>` trong [tài liệu chính thức](https://verilator.org/guide/latest/exe_sim.html).
 
 ## Cách testbench hoạt động
 
