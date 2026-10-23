@@ -46,7 +46,7 @@ sudo apt update
 sudo apt install -y git autoconf help2man perl python3 make g++ flex bison libfl-dev zlib1g-dev gtkwave
 ```
 
-Build UVM từ source Verilator tag `v5.052` nếu cần theo hướng dẫn chính thức của Verilator. Tải UVM 2020.3.2 từ [Accellera](https://www.accellera.org/downloads/standards/uvm), giải nén, rồi đặt `UVM_HOME` vào thư mục chứa `uvm_pkg.sv` và `uvm_macros.svh`:
+Build Verilator từ source Verilator tag `v5.052` nếu cần theo hướng dẫn chính thức của Verilator. Tải UVM 2020.3.2 từ [Accellera](https://www.accellera.org/downloads/standards/uvm), giải nén, rồi đặt `UVM_HOME` vào thư mục chứa `uvm_pkg.sv` và `uvm_macros.svh`:
 
 ```bash
 export UVM_HOME="$HOME/tools/uvm-2020.3.2/src"
