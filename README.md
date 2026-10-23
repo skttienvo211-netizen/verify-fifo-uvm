@@ -1,32 +1,24 @@
 # Xác minh FIFO đồng bộ 8-bit × 4 bằng UVM
+## Tổng quan dự án
 
+FIFO (First-In, First-Out) là bộ đệm phần cứng lưu dữ liệu theo thứ tự đến trước, đọc ra trước. FIFO đồng bộ thường được dùng để đệm dữ liệu dạng burst và tách nhịp truyền giữa các khối cùng miền clock, chẳng hạn giữa hai stage của datapath hoặc giữa producer và consumer có tốc độ xử lý tức thời khác nhau.
 Dự án này xác minh một FIFO đồng bộ có độ rộng dữ liệu 8 bit và sức chứa 4 phần tử. Repository gồm RTL DUT và testbench SystemVerilog/UVM với test định hướng, dữ liệu ngẫu nhiên có ràng buộc, scoreboard dùng reference model độc lập, assertion và coverage.
 
-> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu. 
+> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu.
+> ## Đặc tả hoạt động của FIFO
 
-## Kết quả từ log hiện có
+- Đọc và ghi được lấy mẫu tại cạnh lên của `clk`.
+- Reset bất đồng bộ, active-low (`rst_n`).
+- `rdata` là output đã đăng ký: cập nhật khi read được chấp nhận, ngoài ra giữ giá trị cũ.
+- `full` và `empty` trước cạnh lên quyết định request có được nhận hay không.
+- Khi empty và cùng bật đọc/ghi: chỉ write được nhận.
+- Khi full và cùng bật đọc/ghi: chỉ read được nhận.
+- Ở occupancy trung gian: read và write cùng được nhận.
 
-| Chỉ số | Kết quả |
-|---|---:|
-| Giao dịch định hướng | 17 |
-| Giao dịch ngẫu nhiên có ràng buộc | 200 |
-| Lượt đọc được scoreboard kiểm tra | 87 / 87 |
-| UVM error / fatal | 0 / 0 |
-| UVM runtime warning | 2 (`NO_DPI_USED`, `NO_VISIT_CHECK`) |
-| Functional covergroup | 29 / 29 bins đã định nghĩa |
-| Toggle coverage | 172 / 172 toggle được báo cáo |
-| Line coverage tổng hợp | 26.5% (3,109 / 11,745 điểm instrumented; không riêng DUT) |
-| Verilator compile warnings | 311; build dùng `-Wno-fatal` |
+RTL có các tham số `DATA_W` và `DEPTH`; verification configuration của project kiểm tra cấu hình 8 bit × 4 phần tử.
 
-Các phần trăm coverage chỉ áp dụng cho covergroup và các điểm được instrument trong lần chạy này. Log không ghi seed tường minh. Đây không phải tuyên bố đã xác minh đầy đủ mọi hành vi FIFO hay đạt 100% line coverage riêng cho RTL. Xem [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
 
-## Đặc tả DUT
 
-- Ghi và đọc được lấy mẫu ở cạnh lên của `clk`.
-- Reset bất đồng bộ, tích cực mức thấp (`rst_n`).
-- `rdata` là output đã đăng ký: chỉ cập nhật khi đọc được chấp nhận, ngoài ra giữ giá trị cũ.
-- Việc chấp nhận thao tác dựa trên `full`/`empty` trước cạnh lên.
-- Khi empty và cùng bật đọc/ghi: chỉ ghi được nhận. Khi full và cùng bật đọc/ghi: chỉ đọc được nhận. Ở occupancy giữa 0 và 4: nhận cả đọc lẫn ghi.
 
 ## Cấu trúc project
 
@@ -96,6 +88,22 @@ fifo_test → sequence → sequencer → driver → interface → DUT
 - Monitor ghi request/status trước cạnh lên và output/status sau cạnh lên.
 - Scoreboard dùng queue độc lập để dự đoán thao tác được nhận, so sánh dữ liệu đọc và cờ `full`/`empty`.
 - Assertion trong DUT kiểm tra occupancy không vượt sức chứa.
+  
+## Kết quả từ log hiện có
+
+| Chỉ số | Kết quả |
+|---|---:|
+| Giao dịch định hướng | 17 |
+| Giao dịch ngẫu nhiên có ràng buộc | 200 |
+| Lượt đọc được scoreboard kiểm tra | 87 / 87 |
+| UVM error / fatal | 0 / 0 |
+| UVM runtime warning | 2 (`NO_DPI_USED`, `NO_VISIT_CHECK`) |
+| Functional covergroup | 29 / 29 bins đã định nghĩa |
+| Toggle coverage | 172 / 172 toggle được báo cáo |
+| Line coverage tổng hợp | 26.5% (3,109 / 11,745 điểm instrumented; không riêng DUT) |
+| Verilator compile warnings | 311; build dùng `-Wno-fatal` |
+
+Các phần trăm coverage chỉ áp dụng cho covergroup và các điểm được instrument trong lần chạy này. Log không ghi seed tường minh. Đây không phải tuyên bố đã xác minh đầy đủ mọi hành vi FIFO hay đạt 100% line coverage riêng cho RTL. Xem [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
 
 ## Giới hạn của phiên bản hiện tại
 
