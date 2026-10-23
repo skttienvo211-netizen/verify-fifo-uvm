@@ -1,8 +1,6 @@
 # Báo cáo xác minh FIFO bằng UVM
 
-## Tổng quan dự án
 
-Dự án xác minh FIFO đồng bộ có dữ liệu rộng **8 bit** và sức chứa **4 phần tử**. RTL là DUT; môi trường SystemVerilog/UVM tạo giao dịch, quan sát interface và so sánh hành vi DUT với reference model độc lập dùng queue.
 
 Flow được chạy với **Verilator 5.052** và **Accellera UVM 2020.3.2** trên Ubuntu. Đây là kết quả của lần chạy được lưu trong `sim.log` và `coverage.log`, không đại diện cho simulator thương mại hay regression nhiều seed.
 
