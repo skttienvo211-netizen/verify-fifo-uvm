@@ -71,24 +71,35 @@ Log có 2 warning, 0 UVM error và 0 fatal:
 1. **`NO_DPI_USED`** — Do build định nghĩa `UVM_NO_DPI`; UVM khuyến nghị thử chạy không có define này.
 2. **`NO_VISIT_CHECK`** — Do `UVM_REGEX_NO_DPI` được định nghĩa, UVM không kiểm tra các ràng buộc tên component.
 
-Đây là warning do cấu hình UVM, không phải báo lỗi dữ liệu FIFO. Tuy nhiên, lần chạy này không xác minh các kiểm tra tên component dựa trên DPI của UVM. Log cũng có thông tin `UVM/COMP/NAMECHECK` cho biết cơ chế kiểm tra tên component cần DPI.
+Đây là giới hạn do cấu hình UVM không dùng DPI. Vì vậy các kiểm tra tên component cần DPI không được thực hiện trong lần chạy này.
 
-### Cảnh báo lúc compile từ Verilator
+Verilator compile
 
-Build đã hoàn tất với `-Wall -Wno-fatal`, nghĩa là warning không dừng build. Đếm các dòng `%Warning-...` trong `sim.log` có **311 cảnh báo compile**:
+Build hoàn tất với `-Wall -Wno-fatal`, nhưng log ghi 311 compile warnings:
 
-| Nhóm | Số lượng | Ví dụ trong log |
-|---|---:|---|
-| `WIDTHTRUNC` | 147 | 2 cảnh báo ở localparam DUT (`LAST_PTR`, `DEPTH_COUNT`); phần lớn còn lại ở phần mở rộng macro field-automation của UVM. |
-| `WIDTHEXPAND` | 144 | Chủ yếu ở phần mở rộng macro field-automation của UVM. |
-| `UNUSEDSIGNAL` | 13 | Có tín hiệu interface/testbench và tín hiệu coverage được sinh. |
-| `TIMESCALEMOD` | 3 | RTL/package thiếu time scale trong khi `tb_top` khai báo time scale. |
-| `DECLFILENAME` | 1 | File package chứa class có tên khác file. |
-| `PROCASSINIT` | 1 | `clk` vừa khởi tạo tại khai báo vừa được gán trong tiến trình clock. |
-| `SYNCASYNCNET` | 1 | Reset dùng trong reset bất đồng bộ của DUT và kiểm tra đồng bộ. |
-| `UNDRIVEN` | 1 | Tín hiệu coverage nội bộ được sinh. |
+| Nhóm | Số lượng |
+|---|---:|
+| `WIDTHTRUNC` | 147 |
+| `WIDTHEXPAND` | 144 |
+| `UNUSEDSIGNAL` | 13 |
+| `TIMESCALEMOD` | 3 |
+| `DECLFILENAME` | 1 |
+| `PROCASSINIT` | 1 |
+| `SYNCASYNCNET` | 1 |
+| `UNDRIVEN` | 1 |
 
-Do đó, kết quả là **mô phỏng hoàn tất nhưng còn warning**, không phải build sạch warning. Nên xử lý trước hai width warning ở localparam DUT và sự không thống nhất time scale; sau đó đánh giá riêng warning từ macro UVM và warning của RTL/testbench. Không nên tắt cả nhóm warning rộng khi chưa hiểu nguyên nhân.
+Hai warning width trong RTL liên quan các localparam `LAST_PTR` và `DEPTH_COUNT`. Phần lớn warning width khác xuất hiện trong expansion của macro field-automation UVM. Mô phỏng hoàn tất, nhưng build chưa sạch warning.
+
+8. Giới hạn
+
+- Coverage code là kết quả tổng hợp, không tách riêng DUT.
+- Covergroup không đo trực tiếp reset, mẫu dữ liệu, `rdata` hold hay assertion coverage.
+- Build có 311 compile warnings; simulation có hai UVM warning liên quan DPI.
+- Kết quả chỉ đại diện cho Verilator 5.052 và UVM 2020.3.2; chưa có kết quả từ Questa, VCS hoặc Xcelium.
+
+## 9. Tóm tắt dự án
+
+Testbench SystemVerilog/UVM cho FIFO đồng bộ 8-bit × 4 với directed và constrained-random stimulus, queue-based reference scoreboard, assertion và functional coverage. Trong lần chạy được ghi lại, scoreboard kiểm tra 87 lượt đọc, UVM report không có error/fatal và covergroup đạt 29/29 bins. Build vẫn có compile warnings, simulation có hai UVM warning và log chưa lưu seed.
 
 
 
