@@ -29,18 +29,7 @@ fifo_test → sequence → sequencer → driver → interface → DUT
 
 The UVM testbench includes directed and constrained-random sequences, an active agent, a monitor, a queue-based reference scoreboard, an assertion, and functional coverage. The directed sequence checks full/empty boundaries, FIFO ordering, and simultaneous operations. The random sequence generates 200 requests.
 
-## Build and run
 
-Set `UVM_HOME` to the UVM `src` folder, then run from the repository root:
-
-```bash
-make clean
-make build
-make sim
-make coverage
-```
-
-`make sim` builds before running. Coverage output is written under `build/`.
 
 ## Simulation results
 
