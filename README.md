@@ -2,6 +2,7 @@
 ## Tổng quan dự án
 
 FIFO (First-In, First-Out) là bộ đệm phần cứng lưu dữ liệu theo thứ tự đến trước, đọc ra trước. FIFO đồng bộ thường được dùng để đệm dữ liệu dạng burst và tách nhịp truyền giữa các khối cùng miền clock, chẳng hạn giữa hai stage của datapath hoặc giữa producer và consumer có tốc độ xử lý tức thời khác nhau.
+
 Dự án này xác minh một FIFO đồng bộ có độ rộng dữ liệu 8 bit và sức chứa 4 phần tử. Repository gồm RTL DUT và testbench SystemVerilog/UVM với test định hướng, dữ liệu ngẫu nhiên có ràng buộc, scoreboard dùng reference model độc lập, assertion và coverage.
 
 > **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu.
