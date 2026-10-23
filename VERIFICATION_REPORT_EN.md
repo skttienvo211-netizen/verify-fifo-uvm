@@ -25,7 +25,7 @@ The two UVM warnings are `NO_DPI_USED` and `NO_VISIT_CHECK`. They result from th
 
 The build used `-Wno-fatal`, so compile warnings did not stop it. The run completed with 0 UVM errors and 0 fatals, but it was not warning-clean. The simulation log contains no explicit random seed.
 
-## CV summary
+##  summary
 
 > Built and ran a SystemVerilog/UVM testbench for an 8-bit × 4 synchronous FIFO. Checked 87 accepted reads with a queue-based scoreboard and hit all 29 bins in the configured occupancy/read/write covergroup using Verilator 5.052 and UVM 2020.3.2.
 
