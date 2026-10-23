@@ -1,192 +1,116 @@
-# FIFO 8-bit × 4 UVM verification project
+# Xác minh FIFO đồng bộ 8-bit × 4 bằng UVM
 
-> **Mục tiêu:** một project nhỏ nhưng có đủ các thành phần cơ bản của block-level Design Verification: RTL DUT, SystemVerilog interface, UVM sequence item/sequencer/driver/monitor/agent/environment/scoreboard/test, directed và constrained-random stimulus, assertion, functional coverage, waveform và hướng dẫn chạy trên Ubuntu.
+Dự án này xác minh một FIFO đồng bộ có độ rộng dữ liệu 8 bit và sức chứa 4 phần tử. Repository gồm RTL DUT và testbench SystemVerilog/UVM với test định hướng, dữ liệu ngẫu nhiên có ràng buộc, scoreboard dùng reference model độc lập, assertion và coverage.
 
-> **Simulator của hướng dẫn:** Verilator **5.052** với UVM **2020.3.2**. Verilator 5.052 công bố hỗ trợ UVM 2020.3.2; đây là lựa chọn miễn phí để luyện tập. Nó vẫn có một số giới hạn so với simulator thương mại. Testbench này tránh clocking block của virtual interface và không dựa vào giá trị X/Z. Nếu trường có Questa/VCS/Xcelium, hãy chạy cùng project trên simulator đó nữa và ghi đúng công cụ đã dùng trong CV.
+> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu. Đây là flow học tập với simulator mã nguồn mở. Verilator có các giới hạn UVM đã biết; không ghi đây là kết quả từ Questa/VCS/Xcelium nếu chưa chạy trên simulator đó. Xem [report xác minh](VERIFICATION_REPORT.md) để biết chi tiết log và giới hạn.
 
-## 1. Đặc tả FIFO trước khi viết code
+## Kết quả từ log hiện có
 
-FIFO là synchronous FIFO (cả ghi và đọc theo cạnh lên của `clk`), dữ liệu rộng 8 bit, chứa tối đa 4 từ. Reset bất đồng bộ, active-low (`rst_n=0`). `rdata` là ngõ ra đã đăng ký: nó cập nhật ở cạnh lên khi một thao tác đọc được chấp nhận và giữ giá trị cũ ở các chu kỳ khác.
+| Chỉ số | Kết quả |
+|---|---:|
+| Giao dịch định hướng | 17 |
+| Giao dịch ngẫu nhiên có ràng buộc | 200 |
+| Lượt đọc được scoreboard kiểm tra | 87 / 87 |
+| UVM error / fatal | 0 / 0 |
+| UVM runtime warning | 2 (`NO_DPI_USED`, `NO_VISIT_CHECK`) |
+| Functional covergroup | 29 / 29 bins đã định nghĩa |
+| Toggle coverage | 172 / 172 toggle được báo cáo |
+| Line coverage tổng hợp | 26.5% (3,109 / 11,745 điểm instrumented; không riêng DUT) |
+| Verilator compile warnings | 311; build dùng `-Wno-fatal` |
 
-| Trạng thái trước cạnh lên | `wr_en` | `rd_en` | Kết quả |
-|---|---:|---:|---|
-| Empty | 0 | 1 | Bỏ qua đọc; vẫn empty |
-| Empty | 1 | 1 | Chỉ ghi; dữ liệu mới nằm trong FIFO |
-| Partial | 1 | 1 | Đọc từ cũ ở đầu FIFO và ghi từ mới; occupancy giữ nguyên |
-| Full | 1 | 0 | Bỏ qua ghi; vẫn full |
-| Full | 1 | 1 | Chỉ đọc; ghi bị từ chối theo chính sách đã chọn |
+Các phần trăm coverage chỉ áp dụng cho covergroup và các điểm được instrument trong lần chạy này. Log không ghi seed tường minh. Đây không phải tuyên bố đã xác minh đầy đủ mọi hành vi FIFO hay đạt 100% line coverage riêng cho RTL. Xem [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
 
-Quy tắc chấp nhận được xác định theo `full/empty` **trước** cạnh lên. Đây là điểm quan trọng: một FIFO khác có thể cho phép ghi đồng thời khi full nếu có đọc trong cùng chu kỳ; nếu đổi chính sách, phải đổi cả DUT và reference model/scoreboard.
+## Đặc tả DUT
 
-## 2. Cấu trúc project
+- Ghi và đọc được lấy mẫu ở cạnh lên của `clk`.
+- Reset bất đồng bộ, tích cực mức thấp (`rst_n`).
+- `rdata` là output đã đăng ký: chỉ cập nhật khi đọc được chấp nhận, ngoài ra giữ giá trị cũ.
+- Việc chấp nhận thao tác dựa trên `full`/`empty` trước cạnh lên.
+- Khi empty và cùng bật đọc/ghi: chỉ ghi được nhận. Khi full và cùng bật đọc/ghi: chỉ đọc được nhận. Ở occupancy giữa 0 và 4: nhận cả đọc lẫn ghi.
+
+## Cấu trúc project
 
 ```text
-fifo_uvm_lab/
+.
 ├── rtl/
-│   └── fifo_sync.sv       # DUT: bộ nhớ, read/write pointer, occupancy
+│   └── fifo_sync.sv
 ├── tb/
-│   ├── fifo_if.sv         # Interface nối DUT với testbench
-│   ├── fifo_uvm_pkg.sv    # Các class UVM và reference model
-│   └── tb_top.sv          # Clock, reset, DUT, cấu hình virtual interface
-├── Makefile               # Lệnh build, chạy mô phỏng, báo cáo coverage
-└── .gitignore
+│   ├── fifo_if.sv
+│   ├── fifo_uvm_pkg.sv
+│   └── tb_top.sv
+├── Makefile
+├── README.md
+├── README_EN.md
+├── VERIFICATION_REPORT.md
+└── VERIFICATION_REPORT_EN.md
 ```
 
-## 3. Cài bộ công cụ trên Ubuntu
+## Cài đặt và chạy trên Ubuntu
 
-Nên dùng Ubuntu 22.04/24.04 hoặc môi trường Ubuntu có GCC/G++ 10 trở lên, vì chế độ timing của Verilator cần compiler hỗ trợ C++20 coroutine.
-
-### 3.1 Cài các gói build
+Cần Verilator 5.052, UVM 2020.3.2 và GCC/G++ 10 trở lên để hỗ trợ chế độ timing của flow này. Cài các gói build:
 
 ```bash
 sudo apt update
-sudo apt install -y git autoconf help2man perl python3 make g++ flex bison libfl-dev zlib1g-dev
-g++ --version
+sudo apt install -y git autoconf help2man perl python3 make g++ flex bison libfl-dev zlib1g-dev gtkwave
 ```
 
-### 3.2 Build Verilator 5.052
-
-Gói `verilator` trong kho Ubuntu có thể cũ hơn phiên bản cần cho flow UVM này. Build bản release 5.052 từ source:
-
-```bash
-mkdir -p "$HOME/tools"
-cd "$HOME/tools"
-git clone --depth 1 --branch v5.052 https://github.com/verilator/verilator.git
-cd verilator
-autoconf
-./configure
-make -j"$(nproc)"
-sudo make install
-verilator --version
-```
-
-Kiểm tra output có `Verilator 5.052`.
-
-### 3.3 Tải UVM 2020.3.2
-
-Tải **UVM 2020-3.2 Reference Implementation** từ [trang tải UVM chính thức của Accellera](https://www.accellera.org/downloads/standards/uvm), giải nén vào một thư mục riêng, ví dụ `$HOME/tools/uvm-2020.3.2/`.
-
-Tìm file package:
-
-```bash
-find "$HOME/tools/uvm-2020.3.2" -name uvm_pkg.sv -print
-```
-
-Đặt `UVM_HOME` bằng thư mục `src` chứa `uvm_pkg.sv` và `uvm_macros.svh`. Ví dụ:
+Build UVM từ source Verilator tag `v5.052` nếu cần theo hướng dẫn chính thức của Verilator. Tải UVM 2020.3.2 từ [Accellera](https://www.accellera.org/downloads/standards/uvm), giải nén, rồi đặt `UVM_HOME` vào thư mục chứa `uvm_pkg.sv` và `uvm_macros.svh`:
 
 ```bash
 export UVM_HOME="$HOME/tools/uvm-2020.3.2/src"
-test -f "$UVM_HOME/uvm_pkg.sv" && echo "UVM_HOME OK"
+test -f "$UVM_HOME/uvm_pkg.sv" && test -f "$UVM_HOME/uvm_macros.svh" && echo "UVM_HOME OK"
 ```
 
-Nếu file tìm thấy ở đường dẫn khác, hãy sửa giá trị `UVM_HOME` cho đúng. Không cần chép source UVM vào repository project.
-
-## 4. Hiểu RTL DUT: `rtl/fifo_sync.sv`
-
-- `mem[0:DEPTH-1]` lưu bốn từ 8-bit.
-- `wr_ptr` trỏ tới vị trí ghi tiếp theo; `rd_ptr` trỏ tới từ cũ nhất.
-- `count` lưu số phần tử hiện có. `empty = (count == 0)` và `full = (count == 4)`.
-- `do_write = wr_en && !full`; `do_read = rd_en && !empty`. Chúng hiện thực chính sách đã ghi trong đặc tả.
-- Khi ghi/đọc ở phần tử cuối, pointer quay về 0. Cách này vẫn đúng nếu sau này thử depth không phải lũy thừa của 2.
-- `case ({do_write, do_read})` tăng count khi chỉ ghi, giảm count khi chỉ đọc và giữ nguyên count khi cả hai cùng được chấp nhận hoặc cả hai đều không được chấp nhận.
-- `rdata` chỉ thay đổi khi `do_read=1`; vì là register, monitor lấy giá trị sau cạnh lên để so với từ đầu queue.
-- Assertion kiểm tra occupancy không vượt quá depth. `--assert` bật kiểm tra đó khi chạy Verilator.
-
-## 5. Hiểu UVM testbench
-
-### Transaction và stimulus
-
-`fifo_item` là transaction một chu kỳ, gồm `wr_en`, `rd_en`, `wdata`. Các trường `*_pre` và `*_post` là dữ liệu monitor ghi nhận để scoreboard dùng. Constraint tạo ngẫu nhiên hai enable; dữ liệu ghi là giá trị 8-bit ngẫu nhiên.
-
-`fifo_directed_seq` chủ động tạo các tình huống biên: đổ đầy FIFO, ghi khi full, đọc và ghi cùng lúc khi full, đọc đến empty, đọc khi empty, cùng lúc đọc/ghi ở empty và ở partial. `fifo_random_seq` tiếp tục 200 transaction ngẫu nhiên rồi gửi một transaction idle để không lặp lại yêu cầu cuối.
-
-### Driver, monitor, scoreboard
-
-`fifo_driver` lấy item qua `seq_item_port`, lái input ở cạnh xuống và hoàn tất item sau cạnh lên kế tiếp. Như vậy input ổn định trước khi DUT lấy mẫu ở cạnh lên.
-
-`fifo_monitor` đọc input và `full/empty` trước cạnh lên; nó đợi cạnh xuống tiếp theo để lấy `rdata` và status sau cập nhật nonblocking của DUT, rồi phát transaction qua `uvm_analysis_port`.
-
-`fifo_scoreboard` giữ một queue độc lập làm reference model. Nó tự tính nhận/từ chối giao dịch từ occupancy dự đoán, không lấy cờ DUT làm đáp án. Với mỗi cycle, nó so sánh cờ trước cạnh, dữ liệu đọc (nếu read được chấp nhận), rồi so sánh cờ sau cạnh. Nó cũng thu functional coverage theo occupancy, write/read enable và cross của chúng.
-
-### Agent, environment, test và top
-
-`fifo_agent` gắn sequencer, driver và monitor thành một active agent. `fifo_env` nối analysis port của monitor tới scoreboard. `fifo_test` chạy directed sequence trước, random sequence sau và giữ objection cho tới khi monitor kịp phát transaction cuối. `tb_top` tạo clock/reset, instantiate DUT/interface, đưa virtual interface vào `uvm_config_db` rồi gọi `run_test`.
-
-Luồng dữ liệu:
-
-```text
-fifo_test → sequence → sequencer → driver → interface → DUT
-                                      interface → monitor → analysis port → scoreboard
-```
-
-## 6. Build và chạy
-
-Từ thư mục gốc của project:
+Tại thư mục gốc repository:
 
 ```bash
-export UVM_HOME="$HOME/tools/uvm-2020.3.2/src"
+make clean
 make build
 make sim
-```
-
-`make build` gọi Verilator với `--timing` cho clock/delay, `--assert` cho assertion, `--coverage` cho code và functional coverage, `+define+UVM_NO_DPI` cho flow Verilator, rồi tạo `build/Vtb_top`.
-
-`make sim` chạy test `fifo_test`, hiển thị log UVM mức `UVM_MEDIUM` và ghi coverage vào `build/coverage.dat`. Kết quả tốt là simulation kết thúc bình thường, không có `UVM_ERROR`/assertion failure, và scoreboard báo số lần đọc đã kiểm tra cùng phần trăm functional coverage. Coverage có thể chưa đạt 100%; hãy xem bin nào chưa hit và bổ sung stimulus thay vì chỉ kéo dài random.
-
-Đọc báo cáo coverage sau khi mô phỏng:
-
-```bash
 make coverage
 ```
 
-Lệnh này in summary và tạo source đã annotate trong `build/coverage_annotated/`.
+`make sim` phụ thuộc vào `build`, nên tự build lại trước khi chạy. Kết quả coverage được ghi vào `build/coverage.dat`; `make coverage` in summary và annotate source vào `build/coverage_annotated/`.
 
-Đổi seed để tạo thêm một lần chạy ngẫu nhiên:
-
-```bash
-./build/Vtb_top +UVM_TESTNAME=fifo_test +ntb_random_seed=12345 \
-  +UVM_VERBOSITY=UVM_MEDIUM +verilator+coverage+file+build/seed_12345.dat
-verilator_coverage --report summary build/seed_12345.dat
-```
-
-### Xem waveform (tùy chọn)
-
-Cài GTKWave, build với trace và mở VCD:
+Để chạy binary với seed và coverage file riêng:
 
 ```bash
-sudo apt install -y gtkwave
-make waves
-gtkwave fifo.vcd
+seed=12345
+./build/Vtb_top +UVM_TESTNAME=fifo_test +UVM_VERBOSITY=UVM_MEDIUM \
+  +verilator+seed+$seed +verilator+coverage+file+build/coverage_${seed}.dat
+verilator_coverage --report summary build/coverage_${seed}.dat
 ```
 
-Trong waveform, quan sát `wr_en`, `rd_en`, `wdata`, `rdata`, `full`, `empty`; kiểm tra pointer/count bên trong DUT nếu bật hiển thị internal signals.
+Log `sim.log` không có seed được truyền vào, vì vậy seed của kết quả hiện tại chưa được ghi nhận. Ở lần chạy tiếp theo, lưu seed và log cùng nhau để có thể tái hiện kết quả. Verilator ghi rõ tùy chọn seed runtime là `+verilator+seed+<value>` trong [tài liệu chính thức](https://verilator.org/guide/latest/exe_sim.html).
 
-## 7. Checklist kết quả cần tự kiểm tra
+## Cách testbench hoạt động
 
-- Reset đưa FIFO về `empty=1`, `full=0`.
-- Bốn lần ghi làm `full` lên 1; lần ghi thứ năm không làm đổi dữ liệu FIFO.
-- Read khi full + write cùng lúc chỉ pop từ cũ nhất.
-- Đọc theo đúng thứ tự FIFO: `11`, `22`, `33`, `44` ở đoạn directed đầu.
-- Read khi empty bị bỏ qua; `empty` vẫn bằng 1.
-- Read + write ở empty chỉ ghi; read + write ở partial vừa trả từ cũ vừa giữ từ mới trong FIFO.
-- `rdata` chỉ được kiểm tra khi scoreboard xác định read đã được chấp nhận.
-- Không có `UVM_ERROR`, assertion failure; coverage report cho thấy các occupancy states và các case directed đã được hit.
+```text
+fifo_test → sequence → sequencer → driver → interface → DUT
+                                      DUT → interface → monitor → scoreboard
+```
 
-Nếu có mismatch, bắt đầu từ cycle đầu tiên có `UVM_ERROR`: so sánh `full_pre/empty_pre`, `wr_en/rd_en`, occupancy model, `rdata_post`, rồi waveform. Đừng sửa scoreboard để “khớp” DUT; xác nhận đặc tả trước và sửa RTL hoặc reference model đúng theo đặc tả.
+- Directed sequence lấp FIFO, thử ghi lúc full, rút dữ liệu, thử đọc lúc empty và thử đọc/ghi đồng thời ở full, empty và partial.
+- Random sequence sinh 200 request có ràng buộc rồi thêm một chu kỳ idle.
+- Driver đổi input ở cạnh xuống để ổn định trước cạnh lấy mẫu của DUT.
+- Monitor ghi request/status trước cạnh lên và output/status sau cạnh lên.
+- Scoreboard dùng queue độc lập để dự đoán thao tác được nhận, so sánh dữ liệu đọc và cờ `full`/`empty`.
+- Assertion trong DUT kiểm tra occupancy không vượt sức chứa.
 
-## 8. Đưa project lên GitHub và ghi vào CV
+## Các điểm còn cần hoàn thiện
 
-Trước khi đưa vào CV, hãy tự chạy các bước trên Ubuntu, sửa mọi warning/lỗi, lưu seed, coverage report và một ảnh waveform có chú thích. README GitHub nên ghi rõ simulator/version, seed, số giao dịch, số read được scoreboard kiểm tra, coverage đạt được và các limitation còn lại. Không ghi “100% coverage” nếu report không chứng minh điều đó.
+- Hai UVM runtime warnings do cấu hình `UVM_NO_DPI` cần được giữ rõ trong báo cáo; chúng làm mất một số kiểm tra tên component của UVM.
+- Build hiện có 311 cảnh báo Verilator và dùng `-Wno-fatal`; cần xem xét warning trong RTL/testbench và phân biệt với warning từ macro UVM.
+- Coverage line/branch/expression trong `coverage.log` là tổng hợp trên các nguồn đã instrument, bao gồm UVM/testbench và DUT; chưa có báo cáo line coverage riêng cho DUT.
+- Covergroup hiện đo occupancy, `wr_en`, `rd_en` và cross của chúng; chưa đo trực tiếp reset, mẫu dữ liệu, `rdata` giữ giá trị, hoặc assertion coverage.
+- Nên lưu seed và log đầy đủ cho mỗi lần chạy, đồng thời thêm kiểm tra tự động để regression thất bại nếu có UVM error/fatal hoặc assertion failure.
 
-Ví dụ bullet CV (điền bằng số liệu bạn thực sự thu được):
+## Tài liệu tham khảo
 
-> **FIFO UVM Verification (SystemVerilog, UVM 2020.3.2, Verilator 5.052)** — Built a reusable UVM agent and reference-model scoreboard for an 8-bit × 4 synchronous FIFO; verified reset, empty/full blocking, pointer wraparound, simultaneous read/write policies, and randomized traffic; collected functional coverage and debugged failures with VCD/GTKWave.
+- [Hướng dẫn cài Verilator](https://verilator.org/guide/latest/install.html)
+- [Runtime arguments của Verilator](https://verilator.org/guide/latest/exe_sim.html)
+- [Trạng thái và giới hạn hỗ trợ UVM của Verilator](https://github.com/verilator/verilator/issues/1538)
+- [Tải Accellera UVM](https://www.accellera.org/downloads/standards/uvm)
+- [Phân tích coverage của Verilator](https://verilator.org/guide/latest/simulating.html#coverage-analysis)
 
-Khi đã truy cập được simulator công nghiệp ở trường, chạy lại cùng môi trường bằng Questa/VCS/Xcelium và ghi simulator thực sự dùng. Đó là phần giúp dự án gần flow DV ở công ty hơn.
 
-## Tài liệu chính thức
-
-- [Verilator 5.052 installation guide](https://verilator.org/guide/latest/install.html)
-- [Verilator UVM support status and remaining limitations](https://github.com/verilator/verilator/issues/1538)
-- [Accellera UVM download page](https://www.accellera.org/downloads/standards/uvm)
-- [Verilator coverage guide](https://verilator.org/guide/latest/simulating.html#coverage-analysis)
