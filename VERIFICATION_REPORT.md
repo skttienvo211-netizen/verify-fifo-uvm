@@ -1,83 +1,97 @@
-# FIFO UVM Verification Report & Sign-off
-> **Dự án:** 8-bit × 4 Synchronous FIFO Verification  
-> **Simulator:** Verilator 5.052 with Z3 SMT Solver & GTKWave  
-> **Trạng thái:** **PASSED (100% Functional & Toggle Coverage)**  
-[⬅ Quay lại trang chủ README.md](README.md)
----
-## 1. Kết quả Tổng kết (Executive Summary)
-* **UVM Test Status:** **PASSED** (`UVM_ERROR: 0`, `UVM_FATAL: 0`).
-* **Scoreboard:** Hoàn thành đối soát chính xác **87/87 giao dịch đọc** so với Golden Reference Model.
-* **Functional Coverage:** **100.0% (29/29 bins)**.
-* **Toggle Coverage:** **100.0% (172/172 signals toggled)**.
-* **RTL Line Coverage:** **100.0%** trên module `fifo_sync.sv`.
----
-## 2. Bằng chứng Mô phỏng UVM (Simulation Log)
-Toàn bộ 200 giao dịch ngẫu nhiên sinh từ Z3 SAT Solver và các bài test định hướng biên đều hoàn thành không lỗi:
-```text
-./build/Vtb_top +UVM_TESTNAME=fifo_test +UVM_VERBOSITY=UVM_MEDIUM +verilator+coverage+file+build/coverage.dat
-UVM_INFO @ 0: reporter [RNTST] Running test fifo_test...
-UVM_INFO tb/fifo_uvm_pkg.sv(201) @ 2230000: uvm_test_top.env.sb [FIFO_SB] Reads checked: 87; functional coverage: 100.0%
-UVM_INFO /home/john/tool/uvm/1800.2-2020.3.2/src/base/uvm_report_server.svh(1009) @ 2230000: reporter [UVM/REPORT/SERVER] 
---- UVM Report Summary ---
-** Report counts by severity
-UVM_INFO    :    5
-UVM_WARNING :    2
-UVM_ERROR   :    0
-UVM_FATAL   :    0
-- Simulation Report: Verilator 5.052
-- Verilator: $finish at 2us; walltime 2.703 s; speed 825.052 ns/s
+# Báo cáo xác minh FIFO bằng UVM
 
-  
+## Tổng quan dự án
 
-  
-## 3. Báo cáo Chi tiết Độ phủ (Coverage Report)
+Dự án xác minh FIFO đồng bộ có dữ liệu rộng **8 bit** và sức chứa **4 phần tử**. RTL là DUT; môi trường SystemVerilog/UVM tạo giao dịch, quan sát interface và so sánh hành vi DUT với reference model độc lập dùng queue.
 
-  
+Flow được chạy với **Verilator 5.052** và **Accellera UVM 2020.3.2** trên Ubuntu. Đây là kết quả của lần chạy được lưu trong `sim.log` và `coverage.log`, không đại diện cho simulator thương mại hay regression nhiều seed.
 
-Báo cáo trích xuất tự động qua công cụ verilator_coverage:
+## Cách tôi tổ chức việc xác minh
+
+Trước khi kiểm tra, tôi xác định chính sách FIFO như sau:
+
+- Ghi và đọc xảy ra tại cạnh lên.
+- Reset bất đồng bộ, active-low.
+- `rdata` cập nhật khi có read được chấp nhận; các chu kỳ khác giữ giá trị cũ.
+- `full` và `empty` trước cạnh lên quyết định có nhận thao tác hay không.
+- Khi empty, read+write chỉ nhận write. Khi full, read+write chỉ nhận read. Khi partial, nhận cả hai.
+
+Testbench tách stimulus và checking. Sequence sinh request một chu kỳ. Driver lái tín hiệu ở cạnh xuống. Monitor lấy request/cờ trước cạnh lên và output/cờ sau cập nhật. Scoreboard quyết định thao tác được nhận dựa trên occupancy của queue model, không dựa vào cờ DUT để tạo expected result. Với read được chấp nhận, scoreboard so sánh `rdata` với phần tử cũ nhất trong queue và cập nhật reference model.
+
+## Các thành phần testbench
+
+| Thành phần | Vai trò |
+|---|---|
+| `fifo_item` | Gói `wr_en`, `rd_en`, `wdata` cho một chu kỳ và dữ liệu monitor lấy mẫu. |
+| `fifo_sequencer` | Cấp item cho driver. |
+| `fifo_driver` | Lái request trên interface đồng bộ với clock. |
+| `fifo_monitor` | Quan sát request, status trước cạnh và kết quả sau cạnh; phát qua analysis port. |
+| `fifo_scoreboard` | Queue reference model; so sánh read data và cờ FIFO; lấy functional coverage. |
+| `fifo_agent` / `fifo_env` | Kết nối sequencer, driver, monitor và scoreboard. |
+| `fifo_directed_seq` | Tạo tình huống biên và simultaneous operation. |
+| `fifo_random_seq` | Sinh 200 request random có ràng buộc, sau đó một item idle. |
+| `fifo_test` / `tb_top` | Chạy sequence và tạo clock, reset, DUT, virtual interface. |
+
+## Kịch bản đã chạy
+
+Directed sequence gồm 17 request: ghi bốn giá trị `0x11`, `0x22`, `0x33`, `0x44` để lấp FIFO; thử ghi thêm khi full; read+write đồng thời lúc full; đọc FIFO theo thứ tự đến empty; thử read lúc empty; read+write lúc empty; và read+write ở partial occupancy. Tiếp theo là 200 request ngẫu nhiên và một item idle.
+
+Trong lần chạy này, scoreboard báo đã kiểm tra **87 lượt đọc được chấp nhận**.
+
+## Kết quả trong log
+
+| Chỉ số | Kết quả |
+|---|---:|
+| Simulator | Verilator 5.052, release ngày 2026-09-05 |
+| UVM | Accellera 2020.3.2 |
+| Read data được scoreboard kiểm tra | 87 |
+| UVM error / fatal | 0 / 0 |
+| UVM runtime warning | 2 |
+| Functional covergroup | 100.0% (29 / 29 bins đã định nghĩa) |
+| Toggle coverage | 100.0% (172 / 172 toggle được báo cáo) |
+| Line coverage tổng hợp | 26.5% (3,109 / 11,745 điểm) |
+| Branch coverage tổng hợp | 12.1% (1,934 / 15,983 điểm) |
+| Expression coverage tổng hợp | 16.4% (318 / 1,942 điểm) |
+| FSM state / arc | 0 / 0 điểm |
+| Annotation summary | 6.00% dòng có tất cả attached points được cover (1,355 / 20,410) |
+| Kết thúc mô phỏng | `$finish` tại 2 us; wall time báo cáo 2.954 s |
+
+Coverage code là số tổng hợp của các nguồn được instrument, gồm UVM, testbench và DUT. Log không đưa ra line coverage riêng cho DUT. Vì vậy, report này **không tuyên bố 100% line coverage cho RTL**. Tương tự, functional coverage 29/29 chỉ nói rằng mọi bin trong covergroup cụ thể đã được hit, không có nghĩa đã xác minh hết mọi hành vi FIFO.
+
+### Phạm vi functional coverage
+
+Covergroup trong `fifo_scoreboard` lấy mẫu occupancy model từ 0 đến 4, `wr_en`, `rd_en` và cross của ba coverpoint. Tổng 29 bins gồm 5 occupancy bins, 2 write bins, 2 read bins và 20 cross bins `occupancy × wr_en × rd_en`.
+
+Covergroup này không đo trực tiếp các trường hợp reset, mẫu dữ liệu, việc `rdata` giữ nguyên, assertion coverage hay toàn bộ tình huống recovery/error.
+
+## Phân tích warning
+
+### Hai UVM runtime warnings
+
+Log có 2 warning, 0 UVM error và 0 fatal:
+
+1. **`NO_DPI_USED`** — Do build định nghĩa `UVM_NO_DPI`; UVM khuyến nghị thử chạy không có define này.
+2. **`NO_VISIT_CHECK`** — Do `UVM_REGEX_NO_DPI` được định nghĩa, UVM không kiểm tra các ràng buộc tên component.
+
+Đây là warning do cấu hình UVM, không phải báo lỗi dữ liệu FIFO. Tuy nhiên, lần chạy này không xác minh các kiểm tra tên component dựa trên DPI của UVM. Log cũng có thông tin `UVM/COMP/NAMECHECK` cho biết cơ chế kiểm tra tên component cần DPI.
+
+### Cảnh báo lúc compile từ Verilator
+
+Build đã hoàn tất với `-Wall -Wno-fatal`, nghĩa là warning không dừng build. Đếm các dòng `%Warning-...` trong `sim.log` có **311 cảnh báo compile**:
+
+| Nhóm | Số lượng | Ví dụ trong log |
+|---|---:|---|
+| `WIDTHTRUNC` | 147 | 2 cảnh báo ở localparam DUT (`LAST_PTR`, `DEPTH_COUNT`); phần lớn còn lại ở phần mở rộng macro field-automation của UVM. |
+| `WIDTHEXPAND` | 144 | Chủ yếu ở phần mở rộng macro field-automation của UVM. |
+| `UNUSEDSIGNAL` | 13 | Có tín hiệu interface/testbench và tín hiệu coverage được sinh. |
+| `TIMESCALEMOD` | 3 | RTL/package thiếu time scale trong khi `tb_top` khai báo time scale. |
+| `DECLFILENAME` | 1 | File package chứa class có tên khác file. |
+| `PROCASSINIT` | 1 | `clk` vừa khởi tạo tại khai báo vừa được gán trong tiến trình clock. |
+| `SYNCASYNCNET` | 1 | Reset dùng trong reset bất đồng bộ của DUT và kiểm tra đồng bộ. |
+| `UNDRIVEN` | 1 | Tín hiệu coverage nội bộ được sinh. |
+
+Do đó, kết quả là **mô phỏng hoàn tất nhưng còn warning**, không phải build sạch warning. Nên xử lý trước hai width warning ở localparam DUT và sự không thống nhất time scale; sau đó đánh giá riêng warning từ macro UVM và warning của RTL/testbench. Không nên tắt cả nhóm warning rộng khi chưa hiểu nguyên nhân.
 
 
-  
-text
-Coverage Summary:
-  toggle     : 100.0% ( 172/ 172)
-  covergroup : 100.0% (  29/  29)
-  line       : 100.0% on RTL DUT (fifo_sync.sv)
-
-  
-
-  
-Phân tích Covergroup: Đã kích hoạt toàn bộ 29 bins kiểm thử (Empty, 1 phần tử, 2 phần tử, 3 phần tử, Full 4 phần tử kết hợp với thao tác Đọc và Ghi).
-
-  
-Phân tích Toggle: 100% các chân tín hiệu vào/ra của FIFO đều đã lật trạng thái 0 ➔ 1 và 1 ➔ 0 đầy đủ.
-
-  
-
-  
-
-  
-4. Phân tích Dạng sóng Waveform (GTKWave)
-
-  
-
-Preview unavailable
 
 
-  
-Các mốc kiểm thử quan trọng trên sóng:
-
-  
-
-  
-Giai đoạn Reset (0 - 30 ns): Tín hiệu rst_n tích cực mức thấp (0) trong 3 chu kỳ clock. Cờ empty lên 1, full về 0, bộ đếm count về 0.
-
-  
-Nạp đầy FIFO (30 - 110 ns): Ghi liên tiếp 4 dữ liệu 0x11, 0x22, 0x33, 0x44 vào 4 ô nhớ mem[0..3]. Ngay khi nạp xong từ thứ 4, cờ full lập tức nhảy lên 1.
-
-  
-Kiểm tra Corner Case (Chặn ghi khi FULL): Khi full = 1, kích hoạt wr_en = 1 với dữ liệu rác wdata = 0xEE. Quan sát sóng thấy tín hiệu nội bộ do_write = 0, ô nhớ mem[3] vẫn giữ nguyên giá trị 0x44 (ngăn chặn hỏng dữ liệu thành công).
-
-  
-Giai đoạn Đọc tuần tự (110 - 180 ns): Kích hoạt rd_en = 1, dữ liệu xuất hiện ở rdata l
-ần lượt là 0x11, 0x22, 0x33, 0x44 (đúng chuẩn FIFO). Khi đọc hết, cờ empty bật lên 1.
