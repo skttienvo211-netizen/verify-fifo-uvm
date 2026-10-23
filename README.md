@@ -1,5 +1,5 @@
 # Xác minh FIFO đồng bộ 8-bit × 4 bằng UVM
-Tác giả:Võ Minh Tiến aka John Marcus
+Tác giả : Võ Minh Tiến 
 ## Tổng quan dự án
 
 FIFO (First-In, First-Out) là bộ đệm phần cứng lưu dữ liệu theo thứ tự đến trước, đọc ra trước. FIFO đồng bộ thường được dùng để đệm dữ liệu dạng burst và tách nhịp truyền giữa các khối cùng miền clock, chẳng hạn giữa hai stage của datapath hoặc giữa producer và consumer có tốc độ xử lý tức thời khác nhau.
