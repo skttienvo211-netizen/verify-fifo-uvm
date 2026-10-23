@@ -1,4 +1,4 @@
-8-bit × 4 Synchronous FIFO — UVM Verification
+## 8-bit × 4 Synchronous FIFO — UVM Verification
 
 ## Project overview
 
