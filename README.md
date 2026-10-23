@@ -2,7 +2,7 @@
 
 Dự án này xác minh một FIFO đồng bộ có độ rộng dữ liệu 8 bit và sức chứa 4 phần tử. Repository gồm RTL DUT và testbench SystemVerilog/UVM với test định hướng, dữ liệu ngẫu nhiên có ràng buộc, scoreboard dùng reference model độc lập, assertion và coverage.
 
-> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu. Xem [report xác minh](VERIFICATION_REPORT.md) để biết chi tiết log và giới hạn.
+> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu. 
 
 ## Kết quả từ log hiện có
 
