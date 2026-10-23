@@ -63,7 +63,7 @@ make sim
 make coverage
 ```
 
-`make sim` phụ thuộc vào `build`, nên tự build lại trước khi chạy. Kết quả coverage được ghi vào `build/coverage.dat`; `make coverage` in summary và annotate source vào `build/coverage_annotated/`.
+
 
 
 ## Cách testbench hoạt động
@@ -94,7 +94,7 @@ fifo_test → sequence → sequencer → driver → interface → DUT
 | Line coverage tổng hợp | 26.5% (3,109 / 11,745 điểm instrumented; không riêng DUT) |
 | Verilator compile warnings | 311; build dùng `-Wno-fatal` |
 
-Các phần trăm coverage chỉ áp dụng cho covergroup và các điểm được instrument trong lần chạy này. Log không ghi seed tường minh. Đây không phải tuyên bố đã xác minh đầy đủ mọi hành vi FIFO hay đạt 100% line coverage riêng cho RTL. Xem [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
+
 
 ## Giới hạn của phiên bản hiện tại
 
