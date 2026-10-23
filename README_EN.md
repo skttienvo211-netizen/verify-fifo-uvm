@@ -1,32 +1,37 @@
-# 8-bit × 4 FIFO UVM Verification
+8-bit × 4 Synchronous FIFO — UVM Verification
 
-This project verifies a synchronous FIFO with 8-bit data and 4 entries. It uses SystemVerilog, UVM 2020.3.2, and Verilator 5.052.
+## Project overview
 
-## What I built
+A FIFO (First-In, First-Out) stores data in arrival order. A synchronous FIFO is commonly used to buffer bursts and separate data flow between blocks that share a clock, such as datapath stages or a producer and consumer with different short-term processing rates.
 
-- A FIFO RTL design and UVM testbench.
-- Directed tests for full, empty, simultaneous read/write, and FIFO ordering.
-- 200 constrained-random requests.
-- An independent queue-based scoreboard to check read data and `full`/`empty` flags.
-- Assertions and functional coverage.
+This project implements and verifies an 8-bit-wide, 4-entry, single-clock FIFO. It is a block-level learning project, not an IP integrated into a product. Because it uses one clock, it does **not** handle clock-domain crossing (CDC); asynchronous FIFO and CDC verification are separate topics.
 
-## Results from the supplied logs
+**Tools:** Ubuntu, Verilator 5.052, Accellera UVM 2020.3.2.
 
-| Metric | Result |
-|---|---:|
-| Scoreboard reads checked | 87 |
-| UVM errors / fatals | 0 / 0 |
-| UVM warnings | 2 (DPI-related) |
-| Functional covergroup | 29 / 29 bins |
-| Toggle coverage | 172 / 172 reported toggles |
-| Aggregate line coverage | 26.5%; includes UVM/testbench and DUT |
-| Verilator compile warnings | 311; build used `-Wno-fatal` |
+## Design behavior
 
-The logs do not include an explicit random seed. See [the short report](VERIFICATION_REPORT_EN.md) for warning details and coverage limits.
+- Reads and writes are sampled on the rising clock edge.
+- Reset is asynchronous and active-low.
+- `rdata` updates only when a read is accepted; otherwise it holds its value.
+- Operations use `full` and `empty` before the rising edge.
+- At empty, simultaneous read/write accepts only the write.
+- At full, simultaneous read/write accepts only the read.
+- At intermediate occupancy, both operations are accepted.
 
-## Run
+The RTL has `DATA_W` and `DEPTH` parameters. The verification setup tests 8-bit data and depth 4.
 
-Set `UVM_HOME` to the UVM `src` folder, then run from the project root:
+## Verification environment
+
+```text
+fifo_test → sequence → sequencer → driver → interface → DUT
+                                      DUT → interface → monitor → scoreboard
+```
+
+The UVM testbench includes directed and constrained-random sequences, an active agent, a monitor, a queue-based reference scoreboard, an assertion, and functional coverage. The directed sequence checks full/empty boundaries, FIFO ordering, and simultaneous operations. The random sequence generates 200 requests.
+
+## Build and run
+
+Set `UVM_HOME` to the UVM `src` folder, then run from the repository root:
 
 ```bash
 make clean
@@ -35,10 +40,28 @@ make sim
 make coverage
 ```
 
-`make sim` builds the project before running it. `make coverage` reports the collected data.
+`make sim` builds before running. Coverage output is written under `build/`.
 
-## FIFO policy
+## Simulation results
 
-Operations are accepted using `full` and `empty` before the rising clock edge. At empty, simultaneous read/write accepts only the write. At full, it accepts only the read. At intermediate occupancy, both are accepted.
+Results from the supplied Verilator 5.052 / UVM 2020.3.2 logs:
 
-See [Verilator UVM status](https://github.com/verilator/verilator/issues/1538) for known limitations of this open-source simulator flow.
+| Metric | Result |
+|---|---:|
+| Scoreboard reads checked | 87 |
+| UVM errors / fatals | 0 / 0 |
+| Functional covergroup | 29 / 29 defined bins |
+| Toggle coverage | 172 / 172 reported toggles |
+| Aggregate line / branch / expression coverage | 26.5% / 12.1% / 16.4% |
+| UVM runtime warnings | 2 |
+| Verilator compile warnings | 311 (`-Wno-fatal`) |
+
+Aggregate code coverage includes the instrumented UVM library, testbench, and DUT; it is not DUT-only coverage. The functional coverage result applies only to the defined covergroup. The simulation log does not record an explicit seed. See [the verification report](VERIFICATION_REPORT_EN.md) for details.
+
+## Repository contents
+
+- `rtl/fifo_sync.sv`: FIFO RTL design.
+- `tb/fifo_if.sv`: interface between DUT and testbench.
+- `tb/fifo_uvm_pkg.sv`: UVM components, sequences, and scoreboard.
+- `tb/tb_top.sv`: simulation top.
+- `Makefile`: build, simulation, coverage, and waveform targets.
