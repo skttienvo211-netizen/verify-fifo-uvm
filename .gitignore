@@ -1,0 +1,5 @@
+build/
+coverage_annotated/
+coverage.dat
+fifo.vcd
+*.dat
