@@ -90,7 +90,7 @@ Build hoàn tất với `-Wall -Wno-fatal`, nhưng log ghi 311 compile warnings:
 
 Hai warning width trong RTL liên quan các localparam `LAST_PTR` và `DEPTH_COUNT`. Phần lớn warning width khác xuất hiện trong expansion của macro field-automation UVM. Mô phỏng hoàn tất, nhưng build chưa sạch warning.
 
-8. Giới hạn
+## 8. Giới hạn
 
 - Coverage code là kết quả tổng hợp, không tách riêng DUT.
 - Covergroup không đo trực tiếp reset, mẫu dữ liệu, `rdata` hold hay assertion coverage.
