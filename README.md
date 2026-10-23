@@ -2,7 +2,7 @@
 
 Dự án này xác minh một FIFO đồng bộ có độ rộng dữ liệu 8 bit và sức chứa 4 phần tử. Repository gồm RTL DUT và testbench SystemVerilog/UVM với test định hướng, dữ liệu ngẫu nhiên có ràng buộc, scoreboard dùng reference model độc lập, assertion và coverage.
 
-> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu. Đây là flow học tập với simulator mã nguồn mở. Verilator có các giới hạn UVM đã biết; không ghi đây là kết quả từ Questa/VCS/Xcelium nếu chưa chạy trên simulator đó. Xem [report xác minh](VERIFICATION_REPORT.md) để biết chi tiết log và giới hạn.
+> **Công cụ:** Verilator 5.052, Accellera UVM 2020.3.2, Ubuntu. Xem [report xác minh](VERIFICATION_REPORT.md) để biết chi tiết log và giới hạn.
 
 ## Kết quả từ log hiện có
 
@@ -97,14 +97,15 @@ fifo_test → sequence → sequencer → driver → interface → DUT
 - Scoreboard dùng queue độc lập để dự đoán thao tác được nhận, so sánh dữ liệu đọc và cờ `full`/`empty`.
 - Assertion trong DUT kiểm tra occupancy không vượt sức chứa.
 
-## Các điểm còn cần hoàn thiện
+## Giới hạn của phiên bản hiện tại
 
-- Hai UVM runtime warnings do cấu hình `UVM_NO_DPI` cần được giữ rõ trong báo cáo; chúng làm mất một số kiểm tra tên component của UVM.
-- Build hiện có 311 cảnh báo Verilator và dùng `-Wno-fatal`; cần xem xét warning trong RTL/testbench và phân biệt với warning từ macro UVM.
-- Coverage line/branch/expression trong `coverage.log` là tổng hợp trên các nguồn đã instrument, bao gồm UVM/testbench và DUT; chưa có báo cáo line coverage riêng cho DUT.
-- Covergroup hiện đo occupancy, `wr_en`, `rd_en` và cross của chúng; chưa đo trực tiếp reset, mẫu dữ liệu, `rdata` giữ giá trị, hoặc assertion coverage.
-- Nên lưu seed và log đầy đủ cho mỗi lần chạy, đồng thời thêm kiểm tra tự động để regression thất bại nếu có UVM error/fatal hoặc assertion failure.
-
+- Chưa có seed tường minh trong log.
+- Chưa có line/branch/expression coverage được tách riêng cho RTL DUT.
+- Covergroup chưa đo trực tiếp reset scenarios, mẫu dữ liệu, `rdata` hold hoặc assertion coverage.
+- Build còn compile warnings; UVM runtime cũng có hai cảnh báo do cấu hình không dùng DPI.
+- Các kết quả hiện có thuộc Verilator 5.052 và UVM 2020.3.2.
+  
+## Xem [report xác minh](VERIFICATION_REPORT.md) để biết chi tiết log và giới hạn.
 ## Tài liệu tham khảo
 
 - [Hướng dẫn cài Verilator](https://verilator.org/guide/latest/install.html)
