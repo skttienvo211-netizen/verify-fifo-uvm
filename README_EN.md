@@ -4,7 +4,7 @@
 
 A FIFO (First-In, First-Out) stores data in arrival order. A synchronous FIFO is commonly used to buffer bursts and separate data flow between blocks that share a clock, such as datapath stages or a producer and consumer with different short-term processing rates.
 
-This project implements and verifies an 8-bit-wide, 4-entry, single-clock FIFO. It is a block-level learning project, not an IP integrated into a product. Because it uses one clock, it does **not** handle clock-domain crossing (CDC); asynchronous FIFO and CDC verification are separate topics.
+
 
 **Tools:** Ubuntu, Verilator 5.052, Accellera UVM 2020.3.2.
 
