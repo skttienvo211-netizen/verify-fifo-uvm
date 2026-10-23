@@ -1,4 +1,5 @@
 ## 8-bit × 4 Synchronous FIFO — UVM Verification
+Author: Vo Minh Tien
 
 ## Project overview
 
