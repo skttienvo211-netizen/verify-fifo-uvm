@@ -96,8 +96,12 @@ Hai warning width trong RTL liên quan các localparam `LAST_PTR` và `DEPTH_COU
 - Covergroup không đo trực tiếp reset, mẫu dữ liệu, `rdata` hold hay assertion coverage.
 - Build có 311 compile warnings; simulation có hai UVM warning liên quan DPI.
 - Kết quả chỉ đại diện cho Verilator 5.052 và UVM 2020.3.2; chưa có kết quả từ Questa, VCS hoặc Xcelium.
+## 9. Hình ảnh dạng sóng mô phỏng trên GTKwave
+<img width="1912" height="1007" alt="b72e1d7cdf5e5f00064f" src="https://github.com/user-attachments/assets/16f4afe3-ccc7-44aa-a193-3b23ce07837e" />
 
-## 9. Tóm tắt dự án
+  
+
+## 10. Tóm tắt dự án
 
 Testbench SystemVerilog/UVM cho FIFO đồng bộ 8-bit × 4 với directed và constrained-random stimulus, queue-based reference scoreboard, assertion và functional coverage. Trong lần chạy được ghi lại, scoreboard kiểm tra 87 lượt đọc, UVM report không có error/fatal và covergroup đạt 29/29 bins. Build vẫn có compile warnings, simulation có hai UVM warning và log chưa lưu seed.
 
